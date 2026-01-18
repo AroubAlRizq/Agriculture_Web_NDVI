@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gardener Monitor - KSA Vegetation Tracker</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; overflow: hidden; background: #202020; }
+        
+        /* Full Screen Map */
+        #map { width: 100vw; height: 100vh; background: #000; }
+
+        /* The Dashboard Overlay (Top Left) */
+        .dashboard-panel {
+            position: absolute; top: 10px; left: 50px; z-index: 1000;
+            background: rgba(30, 30, 30, 0.9);
+            color: #fff;
+            padding: 15px; border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .dashboard-panel h2 { margin: 0 0 10px 0; font-size: 18px; color: #4ade80; display: flex; align-items: center; gap: 8px; }
+        .dashboard-panel p { font-size: 13px; color: #aaa; line-height: 1.4; margin-bottom: 15px; }
+
+        /* Layer Controls */
+        .layer-control { margin-bottom: 10px; }
+        .layer-control label { display: block; font-size: 12px; margin-bottom: 5px; color: #ccc; }
+        select {
+            width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px;
+        }
+
+        /* Legend Bar */
+        .legend-bar {
+            height: 12px; width: 100%; border-radius: 6px; margin-top: 10px;
+            background: linear-gradient(to right, #8B4513, #F4A460, #FFFF00, #008000, #004d00);
+        }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 10px; color: #ccc; margin-top: 4px; }
+
+        /* KSA Stats Box */
+        .stats-box {
+            margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .stat-val { font-weight: bold; color: #4ade80; }
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-panel">
+        <h2>🌱 KSA Green Monitor</h2>
+        <p>Monitor vegetation health and gardener progress across Saudi Arabia using real-time satellite indices.</p>
+        
+        <div class="layer-control">
+            <label>Select Product</label>
+            <select id="layer-select" onchange="switchLayer()">
+                <option value="MODIS_NDVI">NDVI (Vegetation Index)</option>
+                <option value="MODIS_EVI">EVI (Enhanced Veg Index)</option>
+                <option value="Terra_TrueColor">True Color (Visual)</option>
+            </select>
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-row"><span>Avg Greenness (KSA):</span> <span class="stat-val" id="val-avg">0.12</span></div>
+            <div class="stat-row"><span>Max Greenness:</span> <span class="stat-val" id="val-max">0.68</span></div>
+            <div class="stat-row"><span>Data Source:</span> <span class="stat-val">NASA GIBS</span></div>
+        </div>
+
+        <div class="legend-bar"></div>
+        <div class="legend-labels">
+            <span>Barren</span>
+            <span>Sparse</span>
+            <span>Dense</span>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
+
+    <script>
+        // 1. Initialize Map
+        // We set the time dimension options to enable the "Play" bar at the bottom
+        var map = L.map('map', {
+            zoom: 6,
+            center: [24.0, 45.0], // Center of Saudi Arabia
+            timeDimension: true,
+            timeDimensionOptions: {
+                timeInterval: "2023-01-01/2023-12-31", // Default Range (1 Year)
+                period: "P8D", // 8 Day steps (common for MODIS satellite data)
+                currentTime: new Date("2023-08-01").getTime()
+            },
+            timeDimensionControl: true,
+            timeDimensionControlOptions: {
+                autoPlay: false,
+                playerOptions: { buffer: 10, transitionTime: 500, loop: true },
+                timeSliderDragUpdate: true,
+                position: 'bottomleft',
+                speedSlider: false
+            }
+        });
+
+        // 2. Base Layer (Dark Map for contrast)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap, © CartoDB',
+            maxZoom: 18
+        }).addTo(map);
+
+        // 3. KSA Border Mask (The "Cookie Cutter")
+        // NOTE: In a real production app, fetch this from a detailed GeoJSON file.
+        // This is a simplified polygon for visual demonstration.
+        const ksaBorder = [
+            [16.3, 42.0], [16.5, 43.0], [17.0, 44.5], [19.0, 45.0], [19.0, 48.0],
+            [19.0, 50.0], [19.0, 52.0], [20.0, 55.0], [22.0, 55.0], [24.0, 52.0],
+            [25.0, 50.5], [26.0, 50.0], [27.0, 49.0], [28.0, 48.5], [29.0, 48.0],
+            [31.0, 47.0], [32.0, 40.0], [32.0, 39.0], [29.5, 35.0], [28.0, 34.5],
+            [25.0, 37.0], [22.0, 39.0], [20.0, 40.0], [17.0, 41.5], [16.3, 42.0]
+        ];
+        
+        // Inverted Polygon to mask everything OUTSIDE KSA
+        const worldCoords = [[90, -180], [90, 180], [-90, 180], [-90, -180]];
+        L.polygon([worldCoords, ksaBorder], {
+            color: 'transparent',
+            fillColor: '#000000',
+            fillOpacity: 0.7, // Dim the outside world
+            interactive: false
+        }).addTo(map);
+
+        // KSA Outline
+        L.polyline(ksaBorder, { color: '#4ade80', weight: 2, opacity: 0.8 }).addTo(map);
+
+
+        // 4. Satellite Layers (NASA GIBS WMS)
+        // These are standard endpoints for getting satellite tiles
+        var layers = {};
+
+        // Layer 1: NDVI (MODIS Terra) - The standard for vegetation
+        var ndviLayer = L.tileLayer.wms("https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi", {
+            layers: 'MODIS_Terra_NDVI_8Day',
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.8,
+            tileSize: 256
+        });
+        // Wrap it in TimeDimension to make it animate
+        layers['MODIS_NDVI'] = L.timeDimension.layer.wms(ndviLayer, {
+            updateTimeDimension: true,
+            wmsVersion: '1.3.0',
+            proxy: 'proxy.php' // Not needed for CORS-enabled GIBS
+        });
+
+        // Layer 2: EVI (Enhanced Vegetation Index)
+        var eviLayer = L.tileLayer.wms("https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi", {
+            layers: 'MODIS_Terra_EVI_8Day',
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.8
+        });
+        layers['MODIS_EVI'] = L.timeDimension.layer.wms(eviLayer, { updateTimeDimension: true });
+
+        // Layer 3: True Color (Visual check)
+        var colorLayer = L.tileLayer.wms("https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi", {
+            layers: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+            format: 'image/jpeg',
+            transparent: true,
+            opacity: 0.9
+        });
+        layers['Terra_TrueColor'] = L.timeDimension.layer.wms(colorLayer, { updateTimeDimension: true });
+
+
+        // 5. Logic to Switch Layers
+        var currentLayer = layers['MODIS_NDVI'];
+        currentLayer.addTo(map);
+
+        function switchLayer() {
+            var selectedVal = document.getElementById('layer-select').value;
+            
+            // Remove current
+            map.removeLayer(currentLayer);
+            
+            // Add new
+            currentLayer = layers[selectedVal];
+            currentLayer.addTo(map);
+
+            // Update Stats (Simulation)
+            updateStats(selectedVal);
+        }
+
+        function updateStats(type) {
+            var avg = document.getElementById('val-avg');
+            var max = document.getElementById('val-max');
+            
+            if(type === 'MODIS_NDVI') {
+                avg.innerText = "0.12"; max.innerText = "0.68";
+            } else if (type === 'MODIS_EVI') {
+                avg.innerText = "0.08"; max.innerText = "0.55";
+            } else {
+                avg.innerText = "--"; max.innerText = "--";
+            }
+        }
+
+    </script>
+</body>
+</html>
