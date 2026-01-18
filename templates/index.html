@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nakheel Guard | Pro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <header>
+            <h1>Nakheel Guard</h1>
+            <p>Advanced Biosecurity & Weather Analysis</p>
+        </header>
+
+        <div class="container">
+            <div class="input-section">
+                <h2>Region Selection</h2>
+                <div class="form-group">
+                    <select id="city">
+                        {% for key, val in cities.items() %}
+                            <option value="{{ key }}">{{ key.replace('_', ' ').title() }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button id="calc-btn">Analyze Satellite Data</button>
+            </div>
+
+            <div class="result-section hidden" id="result-area">
+                
+                <div class="weather-grid" id="weather-dashboard">
+                    <div class="w-card">
+                        <span class="w-label">Temp</span>
+                        <span class="w-val" id="w-temp">--</span>
+                    </div>
+                    <div class="w-card">
+                        <span class="w-label">Humidity</span>
+                        <span class="w-val" id="w-hum">--</span>
+                    </div>
+                    <div class="w-card">
+                        <span class="w-label">Dew Point</span>
+                        <span class="w-val" id="w-dew">--</span>
+                    </div>
+                    <div class="w-card">
+                        <span class="w-label">Wind</span>
+                        <span class="w-val" id="w-wind">--</span>
+                    </div>
+                    <div class="w-card">
+                        <span class="w-label">Visibility</span>
+                        <span class="w-val" id="w-vis">--</span>
+                    </div>
+                    <div class="w-card">
+                        <span class="w-label">Pressure</span>
+                        <span class="w-val" id="w-pres">--</span>
+                    </div>
+                </div>
+
+                <h2>Biological Risk Assessment</h2>
+                <div id="result-display"></div>
+            </div>
+        </div>
+        
+        <footer>
+            Live Metrics: Open-Meteo • Logic: NCM Guidelines
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('calc-btn').addEventListener('click', async function() {
+            const btn = this;
+            const resultArea = document.getElementById('result-area');
+            const city = document.getElementById('city').value;
+
+            btn.innerText = "Processing Telemetry...";
+            btn.disabled = true;
+            resultArea.classList.add('hidden');
+
+            try {
+                const response = await fetch('/assess', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ city: city })
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    // Update Dashboard
+                    document.getElementById('w-temp').innerText = data.weather_summary.temp + "°C";
+                    document.getElementById('w-hum').innerText = data.weather_summary.rh + "%";
+                    document.getElementById('w-dew').innerText = data.weather_summary.dew + "°C";
+                    document.getElementById('w-wind').innerText = data.weather_summary.wind + " km/h";
+                    document.getElementById('w-vis').innerText = data.weather_summary.vis + " km";
+                    document.getElementById('w-pres').innerText = data.weather_summary.pressure + " hPa";
+
+                    // Show Risks
+                    document.getElementById('result-display').innerHTML = data.result;
+                    resultArea.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Connection Failed.");
+            } finally {
+                btn.innerText = "Analyze Satellite Data";
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
