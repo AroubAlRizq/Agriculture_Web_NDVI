@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NCM Satellite Analysis</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body { margin: 0; display: flex; font-family: 'Inter', sans-serif; background: #0f172a; color: white; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 320px; background: rgba(18, 8, 34, 0.95); padding: 20px;
+            border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column;
+            z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        }
+        
+        .map-container { flex-grow: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        h1 { font-size: 1.2rem; margin-top: 0; color: #22d3ee; }
+        label { display: block; margin-top: 15px; font-size: 0.85rem; color: #9ca3af; }
+        
+        select, input, button {
+            width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 8px;
+        }
+        button { background: #3b82f6; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #2563eb; }
+
+        .stats-card {
+            margin-top: 20px; padding: 15px; background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px;
+        }
+        .legend {
+            margin-top: auto; padding-top: 20px;
+        }
+        .gradient-bar {
+            height: 10px; width: 100%; border-radius: 5px;
+            background: linear-gradient(to right, red, yellow, green);
+        }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 5px; }
+
+        /* Timeline Slider */
+        .timeline-controls {
+            margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 10px;
+        }
+        input[type=range] { width: 100%; margin: 10px 0; }
+        .current-date { text-align: center; color: #22d3ee; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div>
+            <h1>🛰️ Satellite Explorer</h1>
+            <p style="font-size: 0.8rem; opacity: 0.7;">Kingdom of Saudi Arabia</p>
+        </div>
+
+        <label>Index Formula</label>
+        <select id="formula">
+            <option value="ndvi">NDVI (Vegetation)</option>
+            <option value="savi">SAVI (Soil Adjusted)</option>
+            <option value="evi">EVI (Enhanced)</option>
+        </select>
+
+        <label>Date Range (Simulation)</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="date" id="date1" value="2024-01-01">
+            <input type="date" id="date2" value="2024-06-01">
+            <input type="date" id="date3" value="2024-12-01">
+        </div>
+
+        <button onclick="loadMapData()">Generate Satellite Analysis</button>
+
+        <div id="stats-box" class="stats-card" style="display:none;">
+            <div style="font-size: 0.8rem; color: #10b981;">AVG INDEX VALUE</div>
+            <div id="stats-val" style="font-size: 2rem; font-weight: bold;">--</div>
+        </div>
+
+        <div class="timeline-controls" id="timeline" style="display:none;">
+            <div class="current-date" id="display-date">Select Date</div>
+            <input type="range" id="time-slider" min="0" max="2" value="0" step="1">
+            <p style="font-size: 0.75rem; text-align: center; opacity: 0.6;">Slide to compare dates</p>
+        </div>
+
+        <div class="legend">
+            <div class="gradient-bar"></div>
+            <div class="legend-labels">
+                <span>Low (Soil)</span>
+                <span>High (Healthy Veg)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // 1. Initialize Map centered on Saudi Arabia
+        const map = L.map('map').setView([24.7136, 46.6753], 6); // Riyadh Center
+
+        // Dark Map Style
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; NCM',
+            maxZoom: 18
+        }).addTo(map);
+
+        let currentOverlays = []; // Store image layers
+        let currentData = [];     // Store API response
+
+        // 2. Function to call Backend
+        async function loadMapData() {
+            const btn = document.querySelector('button');
+            btn.innerText = "Processing Satellite Data...";
+            btn.disabled = true;
+
+            const center = map.getCenter();
+            const dates = [
+                document.getElementById('date1').value,
+                document.getElementById('date2').value,
+                document.getElementById('date3').value
+            ];
+
+            try {
+                const response = await fetch('/get_map_layer', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        lat: center.lat,
+                        lon: center.lng,
+                        zoom: map.getZoom(),
+                        dates: dates,
+                        formula: document.getElementById('formula').value
+                    })
+                });
+
+                const data = await response.json();
+                currentData = data.layers;
+                
+                // Activate Interface
+                document.getElementById('timeline').style.display = 'block';
+                document.getElementById('stats-box').style.display = 'block';
+                
+                // Set Slider Max
+                const slider = document.getElementById('time-slider');
+                slider.max = currentData.length - 1;
+                slider.value = 0;
+                
+                updateLayer(0); // Show first date
+
+            } catch (err) {
+                alert("Error fetching satellite data");
+                console.error(err);
+            } finally {
+                btn.innerText = "Generate Satellite Analysis";
+                btn.disabled = false;
+            }
+        }
+
+        // 3. Update Map Layer based on Slider
+        function updateLayer(index) {
+            // Remove old layers
+            currentOverlays.forEach(layer => map.removeLayer(layer));
+            currentOverlays = [];
+
+            const layerData = currentData[index];
+
+            // Define Image Bounds (Simulated to cover the current view area)
+            // In a real app, the API would return the exact bbox of the image.
+            const bounds = map.getBounds(); 
+            
+            // Add Image Overlay
+            const overlay = L.imageOverlay(layerData.image, bounds, {opacity: 0.8});
+            overlay.addTo(map);
+            currentOverlays.push(overlay);
+
+            // Update Text
+            document.getElementById('display-date').innerText = layerData.date;
+            document.getElementById('stats-val').innerText = layerData.stats;
+        }
+
+        // Slider Event
+        document.getElementById('time-slider').addEventListener('input', (e) => {
+            updateLayer(e.target.value);
+        });
+
+    </script>
+</body>
+</html>
