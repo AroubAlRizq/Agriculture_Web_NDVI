@@ -6,7 +6,16 @@ import io
 import base64
 from scipy.ndimage import gaussian_filter, zoom
 
+from flask import Flask, render_template
+
 app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_template('monitor.html')
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
 
 # --- 1. SATELLITE SIMULATION ENGINE (High-Res Pixelated) ---
 def fetch_satellite_bands(lat, lon, z_level, date):
