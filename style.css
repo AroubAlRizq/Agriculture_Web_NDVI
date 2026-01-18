@@ -1,0 +1,261 @@
+:root {
+    /* Dark Theme Palette */
+    --bg-dark: #121212;       /* Almost Black */
+    --card-bg: #1e1e1e;       /* Dark Gray Card */
+    --input-bg: #2d2d30;      /* Lighter Gray Inputs */
+    --text-main: #e0e0e0;     /* Off-White Text */
+    --text-muted: #a0a0a0;    /* Silver Muted Text */
+    
+    /* Agri-Tech Accents */
+    --tech-green: #00e676;    /* Neon Green */
+    --tech-green-dim: #00a856;
+    --warning-orange: #ff9100;
+    --danger-red: #ff5252;
+    --border-color: #333333;
+}
+
+body {
+    font-family: 'Merriweather Sans', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.main-wrapper {
+    width: 100%;
+    max-width: 650px;
+    margin: 40px 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 20px;
+}
+
+header h1 {
+    color: var(--tech-green);
+    margin: 0;
+    font-size: 2.2rem;
+    letter-spacing: 1px;
+}
+
+header p {
+    color: var(--text-muted);
+    margin-top: 5px;
+    font-weight: 300;
+}
+
+.container {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    padding: 30px;
+}
+
+h2 {
+    color: var(--text-main);
+    font-size: 1.1rem;
+    border-left: 3px solid var(--tech-green);
+    padding-left: 10px;
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.row {
+    display: flex;
+    gap: 15px;
+}
+
+.row .form-group {
+    flex: 1;
+}
+
+label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    box-sizing: border-box;
+    transition: all 0.3s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--tech-green);
+    background-color: #3e3e42;
+}
+
+/* Fix for date picker icon color in Chrome */
+::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--tech-green-dim);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background-color 0.3s;
+    text-transform: uppercase;
+}
+
+button:hover {
+    background-color: var(--tech-green);
+    box-shadow: 0 0 15px rgba(0, 230, 118, 0.4);
+}
+
+.result-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.hidden {
+    display: none;
+}
+
+/* Result List Styling */
+.risk-list {
+    list-style: none;
+    padding: 0;
+}
+
+.risk-list li {
+    background-color: rgba(255, 82, 82, 0.1); /* Red tint */
+    border-left: 4px solid var(--danger-red);
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 0 6px 6px 0;
+    color: var(--text-main);
+}
+
+.risk-list li strong {
+    color: var(--danger-red);
+}
+
+.reason {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+.safe-status {
+    text-align: center;
+    color: var(--tech-green);
+    padding: 20px;
+    background-color: rgba(0, 230, 118, 0.1);
+    border-radius: 6px;
+    border: 1px solid var(--tech-green-dim);
+}
+
+.weather-badge {
+    background-color: var(--input-bg);
+    color: var(--tech-green);
+    border: 1px solid var(--tech-green-dim);
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    display: inline-block;
+    margin-bottom: 15px;
+    font-family: monospace;
+}
+
+footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #555;
+    margin-top: 40px;
+}
+
+/* --- New Risk List Styling --- */
+.risk-list {
+    list-style: none;
+    padding: 0;
+}
+
+.risk-list li {
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    background-color: var(--input-bg); /* Dark gray background */
+    border-left: 5px solid; /* The colored bar on the left */
+    display: flex;
+    flex-direction: column;
+}
+
+.risk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* 1. Low Risk (Green) */
+.risk-low {
+    border-left-color: #00e676; /* Neon Green */
+}
+.risk-low .badge {
+    background-color: rgba(0, 230, 118, 0.2);
+    color: #00e676;
+    border: 1px solid #00e676;
+}
+
+/* 2. Moderate Risk (Orange) */
+.risk-mod {
+    border-left-color: #ff9100; /* Orange */
+}
+.risk-mod .badge {
+    background-color: rgba(255, 145, 0, 0.2);
+    color: #ff9100;
+    border: 1px solid #ff9100;
+}
+
+/* 3. High Risk (Red) */
+.risk-high {
+    border-left-color: #ff5252; /* Red */
+}
+.risk-high .badge {
+    background-color: rgba(255, 82, 82, 0.2);
+    color: #ff5252;
+    border: 1px solid #ff5252;
+}
